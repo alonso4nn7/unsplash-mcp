@@ -5,6 +5,7 @@ import { z } from "zod";
 
 interface Env {
   UNSPLASH_ACCESS_KEY: string;
+  MCP_BEARER_TOKEN: string;
 }
 
 function createServer(env: Env) {
@@ -119,6 +120,12 @@ function createServer(env: Env) {
 
 export default {
   fetch(request: Request, env: Env, ctx: ExecutionContext) {
-    return createMcpHandler(() => createServer(env))(request, env, ctx);
-  },
-};
+  if (
+    !env.MCP_BEARER_TOKEN ||
+    request.headers.get("Authorization") !== `Bearer ${env.MCP_BEARER_TOKEN}`
+  ) {
+    return new Response("No autorizado", { status: 401 });
+  }
+
+  return createMcpHandler(() => createServer(env))(request, env, ctx);
+  }
