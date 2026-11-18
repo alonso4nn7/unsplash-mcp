@@ -10,7 +10,7 @@ interface Env {
 function createServer(env: Env) {
   const server = new McpServer({
     name: "unsplash-mcp",
-    version: "1.0.0"
+    version: "1.0.0",
   });
 
   server.registerTool(
@@ -19,28 +19,35 @@ function createServer(env: Env) {
       description: "Busca fotografías en Unsplash.",
       inputSchema: z.object({
         query: z.string().min(1),
-        per_page: z.number().int().min(1).max(10).optional()
-      })
+        per_page: z.number().int().min(1).max(10).optional(),
+      }),
     },
     async ({ query, per_page }) => {
+      if (!env.UNSPLASH_ACCESS_KEY) {
+        return {
+          content: [{ type: "text", text: "Falta configurar la clave de Unsplash en Cloudflare." }],
+          isError: true,
+        };
+      }
+
       const params = new URLSearchParams({
         query,
-        per_page: String(per_page ?? 5)
+        per_page: String(per_page ?? 5),
       });
 
       const response = await fetch(
         `https://api.unsplash.com/search/photos?${params}`,
         {
           headers: {
-            Authorization: `Client-ID ${env.UNSPLASH_ACCESS_KEY}`
-          }
+            Authorization: `Client-ID ${env.UNSPLASH_ACCESS_KEY}`,
+          },
         }
       );
 
       if (!response.ok) {
         return {
-          content: [{ type: "text" as const, text: `Error de Unsplash: ${response.status}` }],
-          isError: true
+          content: [{ type: "text", text: `Error de Unsplash: ${response.status}` }],
+          isError: true,
         };
       }
 
@@ -53,14 +60,13 @@ function createServer(env: Env) {
         photographer: photo.user.name,
         photographer_url: `${photo.user.links.html}?utm_source=unsplash_mcp&utm_medium=referral`,
         photo_page: `${photo.links.html}?utm_source=unsplash_mcp&utm_medium=referral`,
-        download_location: photo.links.download_location
       }));
 
       return {
         content: [{
-          type: "text" as const,
-          text: JSON.stringify(photos, null, 2)
-        }]
+          type: "text",
+          text: JSON.stringify(photos, null, 2),
+        }],
       };
     }
   );
@@ -68,22 +74,32 @@ function createServer(env: Env) {
   server.registerTool(
     "track_photo_download",
     {
-      description: "Registra una selección o descarga de una fotografía de Unsplash.",
+      description: "Registra la selección o descarga de una fotografía de Unsplash.",
       inputSchema: z.object({
-        download_location: z.string().url()
-      })
+        photo_id: z.string().regex(/^[A-Za-z0-9_-]+$/),
+      }),
     },
-    async ({ download_location }) => {
-      const response = await fetch(download_location, {
-        headers: {
-          Authorization: `Client-ID ${env.UNSPLASH_ACCESS_KEY}`
+    async ({ photo_id }) => {
+      if (!env.UNSPLASH_ACCESS_KEY) {
+        return {
+          content: [{ type: "text", text: "Falta configurar la clave de Unsplash en Cloudflare." }],
+          isError: true,
+        };
+      }
+
+      const response = await fetch(
+        `https://api.unsplash.com/photos/${encodeURIComponent(photo_id)}/download`,
+        {
+          headers: {
+            Authorization: `Client-ID ${env.UNSPLASH_ACCESS_KEY}`,
+          },
         }
-      });
+      );
 
       if (!response.ok) {
         return {
-          content: [{ type: "text" as const, text: "No se pudo registrar la descarga." }],
-          isError: true
+          content: [{ type: "text", text: "No se pudo registrar la descarga." }],
+          isError: true,
         };
       }
 
@@ -91,9 +107,9 @@ function createServer(env: Env) {
 
       return {
         content: [{
-          type: "text" as const,
-          text: JSON.stringify({ download_url: data.url })
-        }]
+          type: "text",
+          text: JSON.stringify({ download_url: data.url }),
+        }],
       };
     }
   );
@@ -104,6 +120,5 @@ function createServer(env: Env) {
 export default {
   fetch(request: Request, env: Env, ctx: ExecutionContext) {
     return createMcpHandler(() => createServer(env))(request, env, ctx);
-  }
+  },
 };
-        
