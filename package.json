@@ -1,3 +1,4 @@
+
 {
   "name": "unsplash-mcp",
   "version": "1.0.0",
@@ -8,7 +9,7 @@
   },
   "dependencies": {
     "agents": "latest",
-    "@modelcontextprotocol/server": "2.3.1",
+    "@modelcontextprotocol/server": "2.4.0",
     "zod": "latest"
   },
   "devDependencies": {
